@@ -26,7 +26,7 @@
     },
 
     "androidNavigationBar": {
-      "backgroundColor": "#C7F1D1",
+      "backgroundColor": "#000000",
       "barStyle": "dark-content",
       "behavior": "inset-swipe"
     },
