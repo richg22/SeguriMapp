@@ -21,14 +21,14 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
+      "predictiveBackGestureEnabled": false,
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
-    },
 
-    "androidNavigationBar": {
-      "backgroundColor": "#000000",
-      "barStyle": "dark-content",
-      "behavior": "inset-swipe"
+      "androidNavigationBar": {
+        "backgroundColor": "transparent",
+        "barStyle": "dark-content",
+        "behavior": "inset-swipe"
+      }
     },
 
     "web": {
