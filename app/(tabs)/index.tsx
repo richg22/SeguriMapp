@@ -122,7 +122,7 @@ const styles = StyleSheet.create({
   linksContainer: {
     marginTop: 20,
     alignItems: "center",
-    gap: 10, // espacio entre links (solo RN 0.71+)
+    gap: 10,
   },
   link: {
     color: "#000000ff",
