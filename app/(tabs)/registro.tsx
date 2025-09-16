@@ -3,9 +3,7 @@ import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import { ActivityIndicator, Alert, Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import TopBar from "../../components/TopBar";
-
-// AJUSTA ESTA URL SI PRUEBAS EN DISPOSITIVO/EMULADOR: usa la IP de tu PC en vez de localhost
-const BASE_URL = "http://IP:3001"; // ejemplo: "http://192.168.1.10:3001" en teléfono [3]
+import { BASE_URL } from "../lib/ipconfig";
 
 const TEXT = "#222";
 const BORDER = "#D9D9D9";
