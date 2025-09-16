@@ -1,4 +1,3 @@
-// app/(tabs)/index.tsx
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
@@ -6,6 +5,8 @@ import {
   Alert,
   Image,
   ImageBackground,
+  KeyboardAvoidingView,
+  Platform,
   StyleSheet,
   Text,
   TextInput,
@@ -14,7 +15,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import TopBar from "../../components/TopBar";
-import { postJSON } from "../lib/api"; // desde (tabs) sube a app y entra a lib [../lib/api]
+import { postJSON } from "../lib/api";
 
 const GREEN = "#C7F1D1";
 const TEXT = "#222";
@@ -23,11 +24,9 @@ export default function Index() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
-  // Estado formulario
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  // UI
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -36,7 +35,6 @@ export default function Index() {
     setError(null);
     try {
       if (!email || !password) throw new Error("Faltan email y/o contraseña");
-      // Llamada centralizada: POST JSON con headers correctos según MDN [web:122]
       const user = await postJSON<{ id: number; name: string; email: string }>(
         "/api/login",
         { email, password }
@@ -51,80 +49,84 @@ export default function Index() {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={{ flex: 1 }}>
+      {/* Fondo fijo */}
       <ImageBackground
         source={require("../../assets/images/background3.png")}
-        style={styles.bg}
+        style={StyleSheet.absoluteFillObject}
         resizeMode="cover"
         imageStyle={{ opacity: 0.35 }}
+      />
+
+      {/* Contenido que se ajusta con el teclado */}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
-        <TopBar />
+        <View style={styles.container}>
+          <TopBar />
 
-        {/* CONTENIDO */}
-        <View style={styles.overlay}>
-          <Image
-            source={require("../../assets/images/logo.png")}
-            style={styles.logo}
-            resizeMode="contain"
-          />
-          <Text style={styles.title}>SeguriMapp</Text>
+          <View style={styles.overlay}>
+            <Image
+              source={require("../../assets/images/logo.png")}
+              style={styles.logo}
+              resizeMode="contain"
+            />
+            <Text style={styles.title}>SeguriMapp</Text>
 
-          {/* Inputs */}
-          <TextInput
-            placeholder="Correo electrónico"
-            placeholderTextColor="#666"
-            style={styles.input}
-            autoCapitalize="none"
-            autoCorrect={false}
-            keyboardType="email-address"
-            value={email}
-            onChangeText={setEmail}
-          />
-          <TextInput
-            placeholder="Contraseña"
-            placeholderTextColor="#666"
-            secureTextEntry
-            style={styles.input}
-            value={password}
-            onChangeText={setPassword}
-          />
+            <TextInput
+              placeholder="Correo electrónico"
+              placeholderTextColor="#666"
+              style={styles.input}
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="email-address"
+              value={email}
+              onChangeText={setEmail}
+            />
+            <TextInput
+              placeholder="Contraseña"
+              placeholderTextColor="#666"
+              secureTextEntry
+              style={styles.input}
+              value={password}
+              onChangeText={setPassword}
+            />
 
-          {/* botón iniciar sesión */}
-          <TouchableOpacity
-            style={styles.button}
-            onPress={onLogin}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="#000" />
-            ) : (
-              <Text style={styles.buttonText}>Iniciar sesión</Text>
-            )}
-          </TouchableOpacity>
-
-          {error ? (
-            <Text style={{ color: "red", marginTop: 10 }}>{error}</Text>
-          ) : null}
-
-          {/* enlaces */}
-          <View style={styles.linksContainer}>
-            <TouchableOpacity onPress={() => router.push("/registro")}>
-              <Text style={styles.link}>Registrarse</Text>
+            <TouchableOpacity
+              style={styles.button}
+              onPress={onLogin}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color="#000" />
+              ) : (
+                <Text style={styles.buttonText}>Iniciar sesión</Text>
+              )}
             </TouchableOpacity>
 
-            <TouchableOpacity onPress={() => router.push("/rcontrasena")}>
-              <Text style={styles.link}>¿Olvidaste tu contraseña?</Text>
-            </TouchableOpacity>
+            {error ? (
+              <Text style={{ color: "red", marginTop: 10 }}>{error}</Text>
+            ) : null}
+
+            <View style={styles.linksContainer}>
+              <TouchableOpacity onPress={() => router.push("/registro")}>
+                <Text style={styles.link}>Registrarse</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity onPress={() => router.push("/rcontrasena")}>
+                <Text style={styles.link}>¿Olvidaste tu contraseña?</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
-      </ImageBackground>
+      </KeyboardAvoidingView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, position: "relative" },
-  bg: { flex: 1, width: "100%", height: "100%" },
+  container: { flex: 1 },
   overlay: {
     flex: 1,
     justifyContent: "flex-start",

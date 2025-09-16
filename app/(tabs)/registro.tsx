@@ -1,7 +1,7 @@
 // app/(tabs)/registro.tsx
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
-import { ActivityIndicator, Alert, Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import TopBar from "../../components/TopBar";
 import { BASE_URL } from "../lib/ipconfig";
 
@@ -67,6 +67,20 @@ export default function Registro() {
   }
 
   return (
+
+    /* NUEVO PARA RESPONSE*/ 
+
+    <KeyboardAvoidingView
+      style={{ flex: 1, backgroundColor: "#fff" }}
+      behavior={Platform.OS === "android" ? "padding" : "height"} // en iOS padding, en Android height
+    >
+    
+      <ScrollView 
+        contentContainerStyle={styles.scrollContainer} 
+        keyboardShouldPersistTaps="handled"
+      >
+
+
     <View style={styles.container}>
       <TopBar />
 
@@ -127,6 +141,7 @@ export default function Registro() {
         />
       </View>
 
+
       <TouchableOpacity style={styles.button} onPress={onSubmit} disabled={loading}>
         {loading ? <ActivityIndicator color="#000" /> : <Text style={styles.buttonText}>Registrar</Text>}
       </TouchableOpacity>
@@ -139,7 +154,13 @@ export default function Registro() {
       >
         <Text style={styles.buttonText}>Volver al inicio</Text>
       </TouchableOpacity>
+
     </View>
+    
+    {/* NUEVO */}
+    
+      </ScrollView>
+    </KeyboardAvoidingView> 
   );
 }
 
@@ -192,4 +213,9 @@ const styles = StyleSheet.create({
   },
   buttonText: { fontSize: 18, fontWeight: "bold", color: "#000" },
   logo: { width: 100, height: 100, marginBottom: 0, marginTop: 60 },
+
+  scrollContainer: {
+    flexGrow: 1,
+    backgroundColor: "#ffffffff",
+  },
 });
