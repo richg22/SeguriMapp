@@ -1,12 +1,26 @@
-const { Pool } = require('pg');
+import sqlite3 from 'sqlite3';
 
-// Configuración de la conexión
-const pool = new Pool({
-  user: 'postgres',        // tu usuario de PostgreSQL
-  host: 'localhost',       // si es local, normalmente es localhost
-  database: 'Segurimapp',  // el nombre de tu base de datos
-  password: 'Segurimapp2025', // la contraseña que pusiste al instalar PostgreSQL
-  port: 5432,              // puerto por defecto de PostgreSQL
+const db = new sqlite3.Database('./segurimapp.db', (err) => {
+  if (err) {
+    console.error('Error al crear la base de datos', err);
+  } else {
+    console.log('Base de datos creada!');
+  }
 });
 
-module.exports = pool;
+// Crear tabla de usuarios
+db.run(`
+  CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    email TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )
+`, (err) => {
+  if (err) console.error(err);
+  else console.log('Tabla de usuarios lista!');
+});
+
+export default db;
