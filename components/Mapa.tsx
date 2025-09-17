@@ -4,6 +4,21 @@ import { useMemo, useRef } from "react";
 import MapView, { Polygon, PROVIDER_GOOGLE, Region } from "react-native-maps";
 import laFloridaGeoJSON from "../assets/geojson/laflorida.json";
 
+// 👉 Estilo: oculta íconos y POIs, pero deja textos de calles visibles
+const MAP_STYLE = [
+  // Oculta TODOS los íconos (mantiene labels de texto)
+  { elementType: "labels.icon", stylers: [{ visibility: "off" }] },
+
+  // Quita POIs (negocios, parques, colegios, etc.)
+  { featureType: "poi", stylers: [{ visibility: "off" }] },
+
+  // Quita transporte (estaciones/líneas)
+  { featureType: "transit", stylers: [{ visibility: "off" }] },
+
+  // (Opcional) menos ruido en “administrative” (barrios/limites)
+  // { featureType: "administrative", elementType: "labels", stylers: [{ visibility: "off" }] },
+];
+
 export default function Mapa() {
   const mapRef = useRef<MapView | null>(null);
 
@@ -16,24 +31,20 @@ export default function Mapa() {
   } = useMemo(() => {
     const geom: any = (laFloridaGeoJSON as any).features[0].geometry;
 
-    // Tomar anillos exteriores (soporta Polygon y MultiPolygon)
     const rings: number[][][] =
       geom.type === "MultiPolygon"
-        ? geom.coordinates.map((poly: number[][][]) => poly[0]) // exterior de cada polígono
-        : [geom.coordinates[0]]; // exterior único
+        ? geom.coordinates.map((poly: number[][][]) => poly[0])
+        : [geom.coordinates[0]];
 
-    // Para el contorno verde usamos el primer anillo exterior
     const outlineCoords = rings[0].map(([lng, lat]: number[]) => ({
       latitude: lat,
       longitude: lng,
     }));
 
-    // Para los "holes" usamos todos los exteriores (si hubiera más de uno)
     const holesCoords = rings.map((ring: number[][]) =>
       ring.map(([lng, lat]) => ({ latitude: lat, longitude: lng }))
     );
 
-    // Bounding box y límites reducidos
     const poly = turf.polygon([rings[0]]);
     const [minLng, minLat, maxLng, maxLat] = turf.bbox(poly) as [
       number,
@@ -42,10 +53,9 @@ export default function Mapa() {
       number
     ];
 
-    const PAD = 0.002;   // margen extra (grados)
-    const SHRINK = 0.75; // encoge el rectángulo hacia el centro
+    const PAD = 0.002;
+    const SHRINK = 0.75;
 
-    // Expandimos un pelo y luego lo encogemos hacia el centro
     const swPad = { latitude: minLat - PAD, longitude: minLng - PAD };
     const nePad = { latitude: maxLat + PAD, longitude: maxLng + PAD };
 
@@ -57,7 +67,6 @@ export default function Mapa() {
     const boundsSW = { latitude: cLat - halfLat, longitude: cLng - halfLng };
     const boundsNE = { latitude: cLat + halfLat, longitude: cLng + halfLng };
 
-    // Región inicial centrada y más cerrada
     const center = turf.centerOfMass(poly).geometry.coordinates as [number, number];
     const centerLat = Number.isFinite(center[1]) ? center[1] : -33.533;
     const centerLng = Number.isFinite(center[0]) ? center[0] : -70.566;
@@ -74,18 +83,17 @@ export default function Mapa() {
 
   const onMapReady = () => {
     if (!mapRef.current) return;
-    // Limita el desplazamiento al rectángulo elegido
     mapRef.current.setMapBoundaries(boundsNE, boundsSW);
     mapRef.current.animateToRegion(initialRegion, 0);
   };
 
-  // Polígono enorme que cubre el mundo
-const WORLD = [
-  { latitude: 85,  longitude: -180 },
-  { latitude: 85,  longitude:  180 },
-  { latitude: -85, longitude:  180 },
-  { latitude: -85, longitude: -180 },
-];
+  // (Si quieres volver a activar la máscara gris fuera de La Florida, descomenta esto)
+  // const WORLD = [
+  //   { latitude: 85, longitude: -180 },
+  //   { latitude: 85, longitude: 180 },
+  //   { latitude: -85, longitude: 180 },
+  //   { latitude: -85, longitude: -180 },
+  // ];
 
   return (
     <MapView
@@ -94,25 +102,23 @@ const WORLD = [
       provider={PROVIDER_GOOGLE}
       initialRegion={initialRegion}
       onMapReady={onMapReady}
-      // Control de zoom
       minZoomLevel={13}
       maxZoomLevel={17}
-      // Opcionales
       rotateEnabled={false}
       pitchEnabled={false}
+      // 👇 aplica el estilo para ocultar íconos
+      customMapStyle={MAP_STYLE as any}
     >
-     {/* <Polygon
-      // Rellena TODO el mapa...
-      coordinates={WORLD}
-      // ...excepto el/los agujero(s) que corresponde(n) a La Florida
-      holes={holesCoords}          // si tu "holesCoords" es LatLng[][]
-      fillColor="rgba(210,210,210,0.55)"  // gris claro semitransparente
-      strokeWidth={0}
-      tappable={false}
-      zIndex={1000}
-    /> */}
+      {/* Máscara gris fuera de La Florida (opcional)
+      <Polygon
+        coordinates={WORLD}
+        holes={holesCoords}
+        fillColor="rgba(210,210,210,0.55)"
+        strokeWidth={0}
+        tappable={false}
+        zIndex={1000}
+      /> */}
 
-      {/* CONTORNO de La Florida */}
       <Polygon
         coordinates={outlineCoords}
         strokeColor="green"
