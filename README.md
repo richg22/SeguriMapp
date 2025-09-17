@@ -1,4 +1,4 @@
-# Bienvido a SeguriMapp 🗺
+# Bienvenido a SeguriMapp 🗺
 
 Proyecto para Capstone 2025, DuocUC.
 
@@ -17,7 +17,7 @@ SeguriMapp es una aplicación móvil colaborativa orientada a la comuna de La Fl
    npm install
    ```
 
-2. Iniciar Back-End (en Carpeta SeguriMapp/backend)
+2. Iniciar Back-End (en Carpeta SeguriMapp/Backend)
 
    ```bash
    npx start
