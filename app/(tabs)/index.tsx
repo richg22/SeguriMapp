@@ -40,7 +40,7 @@ export default function Index() {
         { email, password }
       );
       Alert.alert("Bienvenido", user.name || "Sesión iniciada");
-      router.push("/explore");
+      router.push("/main");
     } catch (e: any) {
       setError(e.message || "Error al iniciar sesión");
     } finally {
