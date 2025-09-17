@@ -1,112 +1,124 @@
+// components/Mapa.tsx
 import * as turf from "@turf/turf";
-import { useEffect, useRef, useState } from "react";
-import MapView, { Polygon, Region } from "react-native-maps";
+import { useMemo, useRef } from "react";
+import MapView, { Polygon, PROVIDER_GOOGLE, Region } from "react-native-maps";
 import laFloridaGeoJSON from "../assets/geojson/laflorida.json";
 
 export default function Mapa() {
   const mapRef = useRef<MapView | null>(null);
 
-  // Coordenadas del polígono de La Florida
-  const coordinates = laFloridaGeoJSON.features[0].geometry.coordinates[0].map(
-    (coord: number[]) => ({
-      latitude: coord[1],
-      longitude: coord[0],
-    })
-  );
+  const {
+    outlineCoords,
+    holesCoords,
+    initialRegion,
+    boundsNE,
+    boundsSW,
+  } = useMemo(() => {
+    const geom: any = (laFloridaGeoJSON as any).features[0].geometry;
 
-  // Polígono exterior para la máscara
-  const outerPolygon = [
-    { latitude: 90, longitude: -180 },
-    { latitude: 90, longitude: 180 },
-    { latitude: -90, longitude: 180 },
-    { latitude: -90, longitude: -180 },
-  ];
+    // Tomar anillos exteriores (soporta Polygon y MultiPolygon)
+    const rings: number[][][] =
+      geom.type === "MultiPolygon"
+        ? geom.coordinates.map((poly: number[][][]) => poly[0]) // exterior de cada polígono
+        : [geom.coordinates[0]]; // exterior único
 
-  // Bounding box y región inicial
-  const bbox = turf.bbox(laFloridaGeoJSON);
-  const LAT_MIN = bbox[1];
-  const LAT_MAX = bbox[3];
-  const LNG_MIN = bbox[0];
-  const LNG_MAX = bbox[2];
+    // Para el contorno verde usamos el primer anillo exterior
+    const outlineCoords = rings[0].map(([lng, lat]: number[]) => ({
+      latitude: lat,
+      longitude: lng,
+    }));
 
-  const initialRegion: Region = {
-    latitude: (LAT_MIN + LAT_MAX) / 2,
-    longitude: (LNG_MIN + LNG_MAX) / 2,
-    latitudeDelta: (LAT_MAX - LAT_MIN) * 1.2,
-    longitudeDelta: (LNG_MAX - LNG_MIN) * 1.2,
-  };
-
-  const [region, setRegion] = useState<Region>(initialRegion);
-
-  // Ajustar región si se sale del polígono
-  const clampRegionToPolygon = (newRegion: Region): Region => {
-    const point = turf.point([newRegion.longitude, newRegion.latitude]);
-    const polygon = turf.polygon(
-      laFloridaGeoJSON.features[0].geometry.coordinates
+    // Para los "holes" usamos todos los exteriores (si hubiera más de uno)
+    const holesCoords = rings.map((ring: number[][]) =>
+      ring.map(([lng, lat]) => ({ latitude: lat, longitude: lng }))
     );
 
-    if (turf.booleanPointInPolygon(point, polygon)) {
-      // Dentro del polígono → aceptamos
-      return newRegion;
-    }
+    // Bounding box y límites reducidos
+    const poly = turf.polygon([rings[0]]);
+    const [minLng, minLat, maxLng, maxLat] = turf.bbox(poly) as [
+      number,
+      number,
+      number,
+      number
+    ];
 
-    // Buscar punto más cercano en el borde
-    const line = turf.lineString(laFloridaGeoJSON.features[0].geometry.coordinates[0]);
-    const nearest = turf.nearestPointOnLine(line, point);
+    const PAD = 0.002;   // margen extra (grados)
+    const SHRINK = 0.75; // encoge el rectángulo hacia el centro
 
-    return {
-      ...newRegion,
-      latitude: nearest.geometry.coordinates[1],
-      longitude: nearest.geometry.coordinates[0],
-      latitudeDelta: Math.min(
-        newRegion.latitudeDelta,
-        (LAT_MAX - LAT_MIN) * 1.2
-      ),
-      longitudeDelta: Math.min(
-        newRegion.longitudeDelta,
-        (LNG_MAX - LNG_MIN) * 1.2
-      ),
+    // Expandimos un pelo y luego lo encogemos hacia el centro
+    const swPad = { latitude: minLat - PAD, longitude: minLng - PAD };
+    const nePad = { latitude: maxLat + PAD, longitude: maxLng + PAD };
+
+    const cLat = (swPad.latitude + nePad.latitude) / 2;
+    const cLng = (swPad.longitude + nePad.longitude) / 2;
+    const halfLat = ((nePad.latitude - swPad.latitude) / 2) * SHRINK;
+    const halfLng = ((nePad.longitude - swPad.longitude) / 2) * SHRINK;
+
+    const boundsSW = { latitude: cLat - halfLat, longitude: cLng - halfLng };
+    const boundsNE = { latitude: cLat + halfLat, longitude: cLng + halfLng };
+
+    // Región inicial centrada y más cerrada
+    const center = turf.centerOfMass(poly).geometry.coordinates as [number, number];
+    const centerLat = Number.isFinite(center[1]) ? center[1] : -33.533;
+    const centerLng = Number.isFinite(center[0]) ? center[0] : -70.566;
+
+    const initialRegion: Region = {
+      latitude: centerLat,
+      longitude: centerLng,
+      latitudeDelta: (boundsNE.latitude - boundsSW.latitude) * 0.9,
+      longitudeDelta: (boundsNE.longitude - boundsSW.longitude) * 0.9,
     };
-  };
 
-  const handleRegionChange = (newRegion: Region) => {
-    const clampedRegion = clampRegionToPolygon(newRegion);
-    setRegion(clampedRegion);
-
-    if (
-      clampedRegion.latitude !== newRegion.latitude ||
-      clampedRegion.longitude !== newRegion.longitude
-    ) {
-      mapRef.current?.animateToRegion(clampedRegion, 200);
-    }
-  };
-
-  useEffect(() => {
-    mapRef.current?.animateToRegion(initialRegion, 0);
+    return { outlineCoords, holesCoords, initialRegion, boundsNE, boundsSW };
   }, []);
+
+  const onMapReady = () => {
+    if (!mapRef.current) return;
+    // Limita el desplazamiento al rectángulo elegido
+    mapRef.current.setMapBoundaries(boundsNE, boundsSW);
+    mapRef.current.animateToRegion(initialRegion, 0);
+  };
+
+  // Polígono enorme que cubre el mundo
+const WORLD = [
+  { latitude: 85,  longitude: -180 },
+  { latitude: 85,  longitude:  180 },
+  { latitude: -85, longitude:  180 },
+  { latitude: -85, longitude: -180 },
+];
 
   return (
     <MapView
       ref={mapRef}
       style={{ flex: 1 }}
+      provider={PROVIDER_GOOGLE}
       initialRegion={initialRegion}
-      onRegionChangeComplete={handleRegionChange}
-      minZoomLevel={12}
-      maxZoomLevel={18}
+      onMapReady={onMapReady}
+      // Control de zoom
+      minZoomLevel={13}
+      maxZoomLevel={17}
+      // Opcionales
+      rotateEnabled={false}
+      pitchEnabled={false}
     >
-      {/* Máscara oscura para todo menos La Florida */}
-      <Polygon
-        coordinates={outerPolygon}
-        holes={[coordinates]}
-        fillColor="rgba(0,0,0,0.5)"
-      />
+     {/* <Polygon
+      // Rellena TODO el mapa...
+      coordinates={WORLD}
+      // ...excepto el/los agujero(s) que corresponde(n) a La Florida
+      holes={holesCoords}          // si tu "holesCoords" es LatLng[][]
+      fillColor="rgba(210,210,210,0.55)"  // gris claro semitransparente
+      strokeWidth={0}
+      tappable={false}
+      zIndex={1000}
+    /> */}
 
-      {/* Polígono de La Florida */}
+      {/* CONTORNO de La Florida */}
       <Polygon
-        coordinates={coordinates}
+        coordinates={outlineCoords}
         strokeColor="green"
         fillColor="transparent"
         strokeWidth={2}
+        zIndex={1}
       />
     </MapView>
   );
